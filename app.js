@@ -78,7 +78,10 @@ function gerarOperacao(passageiros) {
 
     const porHorario = agruparPor(passageiros, "entrada");
 
-    Object.keys(porHorario).sort().forEach(horario => {
+            Object.keys(porHorario)
+            .sort(ordenarHorariosOperacao)
+            .forEach(horario => {
+                
         const listaHorario = porHorario[horario];
 
         let fila = [...listaHorario];
@@ -341,4 +344,16 @@ function verificarPagina(doc, y) {
     }
 
     return y;
+}
+
+function ordenarHorariosOperacao(a, b) {
+    if (a === "00:00") return 1;
+    if (b === "00:00") return -1;
+
+    return converterHorarioParaMinutos(a) - converterHorarioParaMinutos(b);
+}
+
+function converterHorarioParaMinutos(horario) {
+    const [h, m] = horario.split(":").map(Number);
+    return h * 60 + m;
 }
