@@ -78,36 +78,43 @@ function gerarOperacao(passageiros) {
 
     const porHorario = agruparPor(passageiros, "entrada");
 
-            Object.keys(porHorario)
-            .sort(ordenarHorariosOperacao)
-            .forEach(horario => {
-                
-        const listaHorario = porHorario[horario];
+    Object.keys(porHorario)
+        .sort(ordenarHorariosOperacao)
+        .forEach(horario => {
 
-        let fila = [...listaHorario];
+            let fila = [...porHorario[horario]];
 
-        while (fila.length > 0) {
-            const veiculo = escolherVeiculoDisponivel();
+            let indiceVeiculo = 0;
 
-            if (!veiculo) {
-                alert("Não há veículos disponíveis para distribuir todos os passageiros.");
-                break;
+            while (fila.length > 0) {
+                const veiculosDisponiveis = operacaoFinal.filter(v =>
+                    v.voltas.length < v.maxVoltas
+                );
+
+                if (veiculosDisponiveis.length === 0) {
+                    alert("Não há veículos suficientes para distribuir todos os passageiros.");
+                    break;
+                }
+
+                const veiculo = veiculosDisponiveis[
+                    indiceVeiculo % veiculosDisponiveis.length
+                ];
+
+                const passageirosDaVolta = fila.splice(0, veiculo.capacidade);
+
+                veiculo.voltas.push({
+                    entrada: horario,
+                    saida: calcularSaida(horario),
+                    passageiros: passageirosDaVolta
+                });
+
+                indiceVeiculo++;
             }
-
-            const passageirosDaVolta = fila.splice(0, veiculo.capacidade);
-
-            veiculo.voltas.push({
-                entrada: horario,
-                saida: calcularSaida(horario),
-                passageiros: passageirosDaVolta
-            });
-        }
-    });
+        });
 
     mostrarResumo(passageiros);
     desenharOperacao();
 }
-
 function escolherVeiculoDisponivel() {
     return operacaoFinal.find(v => v.voltas.length < v.maxVoltas);
 }
