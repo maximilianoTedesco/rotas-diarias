@@ -1,26 +1,37 @@
 const CONFIG = {
     minutosAntesEntrada: 90,
+    intervaloPontos: 5,
 
-    carrinhas: [
+    veiculos: [
         {
-            nome: "Carrinha 1",
-            capacidade: 15
+            id: 1,
+            nome: "MINIBUS",
+            capacidade: 15,
+            maxVoltas: 2
         },
         {
-            nome: "Carrinha 2",
-            capacidade: 8
+            id: 2,
+            nome: "CARRINHA 2",
+            capacidade: 8,
+            maxVoltas: 99
         },
         {
-            nome: "Carrinha 3",
-            capacidade: 8
+            id: 3,
+            nome: "CARRINHA 3",
+            capacidade: 8,
+            maxVoltas: 99
         },
         {
-            nome: "Carrinha 4",
-            capacidade: 8
+            id: 4,
+            nome: "CARRINHA 4",
+            capacidade: 8,
+            maxVoltas: 99
         },
         {
-            nome: "Carrinha 5",
-            capacidade: 8
+            id: 5,
+            nome: "CARRINHA 5",
+            capacidade: 8,
+            maxVoltas: 99
         }
     ],
 
