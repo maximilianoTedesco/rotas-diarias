@@ -1,5 +1,6 @@
 const CONFIG = {
     minutosAntesEntrada: 90,
+    horaMinimaInicio: "06:00",
     intervaloPontos: 5,
 
     veiculos: [
