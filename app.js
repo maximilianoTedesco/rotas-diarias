@@ -296,8 +296,11 @@ function calcularSaida(horario) {
 
     let total = h * 60 + m - CONFIG.minutosAntesEntrada;
 
-    if (total < 0) {
-        total += 24 * 60;
+    const [hMin, mMin] = CONFIG.horaMinimaInicio.split(":").map(Number);
+    const minimo = hMin * 60 + mMin;
+
+    if (total < minimo) {
+        total = minimo;
     }
 
     return formatarMinutos(total);
