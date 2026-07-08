@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Gerador Inteligente de Rotas</title>
+
+    <link rel="stylesheet" href="style.css">
+
+</head>
+
+<body>
+
+    <div class="container">
+
+        <header>
+
+            <h1>🚐 Gerador Inteligente de Rotas</h1>
+
+            <p>
+                Importe a escala diária em Excel e gere automaticamente
+                as listas de passageiros.
+            </p>
+
+        </header>
+
+        <section class="card">
+
+            <h2>Importar Escala</h2>
+
+            <input
+                type="file"
+                id="arquivoExcel"
+                accept=".xlsx,.xls,.csv">
+
+            <button id="btnGerar">
+                🚀 Gerar Rotas
+            </button>
+
+        </section>
+
+        <section id="resumo" class="card oculto">
+
+            <h2>Resumo</h2>
+
+            <div id="estatisticas"></div>
+
+        </section>
+
+        <section id="resultado" class="card oculto">
+
+            <h2>Resultado</h2>
+
+            <div id="rotasGeradas"></div>
+
+        </section>
+
+    </div>
+
+    <script src="libs/xlsx.full.min.js"></script>
+
+    <script src="config.js"></script>
+
+    <script src="app.js"></script>
+
+</body>
+
+</html>
