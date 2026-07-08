@@ -3,14 +3,14 @@ const btnGerar = document.getElementById("btnGerar");
 
 const resumo = document.getElementById("resumo");
 const resultado = document.getElementById("resultado");
-
 const estatisticas = document.getElementById("estatisticas");
 const rotasGeradas = document.getElementById("rotasGeradas");
+
+let rotasFinais = [];
 
 btnGerar.addEventListener("click", lerExcel);
 
 function lerExcel() {
-
     const arquivo = inputArquivo.files[0];
 
     if (!arquivo) {
@@ -21,218 +21,298 @@ function lerExcel() {
     const leitor = new FileReader();
 
     leitor.onload = function (e) {
-
         const dados = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(dados, { type: "array" });
+        const planilha = workbook.Sheets[workbook.SheetNames[0]];
 
-        const workbook = XLSX.read(dados, {
-            type: "array"
+        const linhas = XLSX.utils.sheet_to_json(planilha, {
+            header: 1,
+            defval: ""
         });
 
-        const primeiraPlanilha = workbook.Sheets[
-            workbook.SheetNames[0]
-        ];
-
-        const linhas = XLSX.utils.sheet_to_json(
-            primeiraPlanilha,
-            {
-                header: 1,
-                defval: ""
-            }
-        );
-
         processarLinhas(linhas);
-
     };
 
     leitor.readAsArrayBuffer(arquivo);
-
 }
 
 function processarLinhas(linhas) {
-
     const passageiros = [];
 
     for (let i = 1; i < linhas.length; i++) {
-
         const linha = linhas[i];
 
-        const entrada = String(
-            linha[CONFIG.colunas.entrada]
-        ).trim().toUpperCase();
+        const nome = String(linha[CONFIG.colunas.nome] || "").trim();
+        const hotel = String(linha[CONFIG.colunas.hotel] || "").trim();
+        const entrada = String(linha[CONFIG.colunas.entrada] || "").trim();
+        const recolha = String(linha[CONFIG.colunas.recolha] || "").trim();
 
-        if (
-            entrada === "" ||
-            entrada === "FOLGA"
-        ) {
-            continue;
-        }
+        if (!nome || !hotel || !entrada) continue;
+
+        if (entrada.toUpperCase().includes("FOLGA")) continue;
 
         passageiros.push({
-
-            nome:
-                linha[CONFIG.colunas.nome],
-
-            hotel:
-                linha[CONFIG.colunas.hotel],
-
-            entrada:
-
-                linha[CONFIG.colunas.entrada],
-
-            recolha:
-
-                linha[CONFIG.colunas.recolha]
-
+            nome,
+            hotel,
+            entrada,
+            recolha
         });
-
     }
 
-    mostrarResumo(passageiros);
-
-    agruparPorHorario(passageiros);
-
+    gerarRotas(passageiros);
 }
 
-function mostrarResumo(lista) {
+function gerarRotas(passageiros) {
+    rotasFinais = [];
 
+    const porHorario = agruparPor(passageiros, "entrada");
+
+    Object.keys(porHorario).sort().forEach(horario => {
+        const listaHorario = porHorario[horario];
+
+        let indicePassageiro = 0;
+
+        CONFIG.carrinhas.forEach((carrinha, index) => {
+            const passageirosCarrinha = listaHorario.slice(
+                indicePassageiro,
+                indicePassageiro + carrinha.capacidade
+            );
+
+            if (passageirosCarrinha.length > 0) {
+                rotasFinais.push({
+                    id: rotasFinais.length + 1,
+                    horario,
+                    saida: calcularSaida(horario),
+                    carrinha: carrinha.nome,
+                    capacidade: carrinha.capacidade,
+                    passageiros: passageirosCarrinha
+                });
+            }
+
+            indicePassageiro += carrinha.capacidade;
+        });
+
+        const restantes = listaHorario.slice(indicePassageiro);
+
+        if (restantes.length > 0) {
+            rotasFinais.push({
+                id: rotasFinais.length + 1,
+                horario,
+                saida: calcularSaida(horario),
+                carrinha: "Viagem extra necessária",
+                capacidade: restantes.length,
+                passageiros: restantes,
+                extra: true
+            });
+        }
+    });
+
+    mostrarResumo(passageiros);
+    desenharRotas();
+}
+
+function mostrarResumo(passageiros) {
     resumo.classList.remove("oculto");
 
     estatisticas.innerHTML = `
-
         <div class="estatisticas-grid">
-
             <div class="stat">
-
-                <strong>${lista.length}</strong>
-
-                Passageiros
-
+                <strong>${passageiros.length}</strong>
+                Passageiros ativos
             </div>
 
+            <div class="stat">
+                <strong>${rotasFinais.length}</strong>
+                Rotas geradas
+            </div>
+
+            <div class="stat">
+                <strong>${CONFIG.carrinhas.length}</strong>
+                Carrinhas disponíveis
+            </div>
         </div>
-
     `;
-
 }
 
-function agruparPorHorario(lista) {
-
+function desenharRotas() {
     resultado.classList.remove("oculto");
-
     rotasGeradas.innerHTML = "";
 
-    const horarios = {};
+    rotasFinais.forEach(rota => {
+        const bloco = document.createElement("div");
+        bloco.className = "bloco-horario";
 
-    lista.forEach(p => {
+        const hoteis = agruparPor(rota.passageiros, "hotel");
+        const pontos = agruparPor(rota.passageiros, "recolha");
 
-        if (!horarios[p.entrada]) {
+        bloco.innerHTML = `
+            <div class="titulo-horario">
+                Rota ${rota.id} — Entrada ${rota.horario}
+                <br>
+                Saída prevista: ${rota.saida}
+            </div>
 
-            horarios[p.entrada] = [];
+            <div class="conteudo-horario">
+                <p><strong>Carrinha:</strong> ${rota.carrinha}</p>
+                <p><strong>Capacidade:</strong> ${rota.capacidade}</p>
+                <p><strong>Total:</strong> ${rota.passageiros.length} passageiros</p>
 
-        }
+                ${rota.extra ? `<div class="alerta">Atenção: esta rota excede a capacidade normal da frota.</div>` : ""}
 
-        horarios[p.entrada].push(p);
+                <br>
 
+                <h3>🏨 Hotéis</h3>
+                ${Object.keys(hoteis).sort().map(hotel => `
+                    <div class="hotel">
+                        <h3>${hotel} (${hoteis[hotel].length})</h3>
+                        ${hoteis[hotel].map(p => `
+                            <div class="passageiro">
+                                👤 ${p.nome}<br>
+                                📍 ${p.recolha}
+                            </div>
+                        `).join("")}
+                    </div>
+                `).join("")}
+
+                <h3>📍 Pontos de recolha</h3>
+                ${Object.keys(pontos).sort().map(ponto => `
+                    <div class="hotel">
+                        <h3>${ponto || "Sem ponto informado"} (${pontos[ponto].length})</h3>
+                        ${pontos[ponto].map(p => `
+                            <div class="passageiro">
+                                👤 ${p.nome}<br>
+                                🏨 ${p.hotel}
+                            </div>
+                        `).join("")}
+                    </div>
+                `).join("")}
+
+                <button onclick="exportarPdf(${rota.id})">
+                    📄 Exportar PDF desta rota
+                </button>
+            </div>
+        `;
+
+        rotasGeradas.appendChild(bloco);
     });
-
-    Object.keys(horarios)
-        .sort()
-        .forEach(horario => {
-
-            desenharHorario(
-
-                horario,
-
-                horarios[horario]
-
-            );
-
-        });
-
 }
 
-function desenharHorario(horario, passageiros) {
+function agruparPor(lista, campo) {
+    return lista.reduce((grupo, item) => {
+        const chave = item[campo] || "Não informado";
 
-    const bloco = document.createElement("div");
-
-    bloco.className = "bloco-horario";
-
-    const titulo = document.createElement("div");
-
-    titulo.className = "titulo-horario";
-
-    titulo.innerHTML = `
-
-        Entrada ${horario}
-
-        (${passageiros.length} passageiros)
-
-    `;
-
-    bloco.appendChild(titulo);
-
-    const conteudo = document.createElement("div");
-
-    conteudo.className = "conteudo-horario";
-
-    const hoteis = {};
-
-    passageiros.forEach(p => {
-
-        if (!hoteis[p.hotel]) {
-
-            hoteis[p.hotel] = [];
-
+        if (!grupo[chave]) {
+            grupo[chave] = [];
         }
 
-        hoteis[p.hotel].push(p);
+        grupo[chave].push(item);
 
-    });
+        return grupo;
+    }, {});
+}
 
-    Object.keys(hoteis)
-        .sort()
-        .forEach(hotel => {
+function calcularSaida(horario) {
+    const partes = String(horario).split(":");
 
-            const card = document.createElement("div");
+    let horas = Number(partes[0]);
+    let minutos = Number(partes[1] || 0);
 
-            card.className = "hotel";
+    let totalMinutos = horas * 60 + minutos;
+    totalMinutos -= CONFIG.minutosAntesEntrada;
 
-            card.innerHTML = `
+    if (totalMinutos < 0) {
+        totalMinutos += 24 * 60;
+    }
 
-                <h3>
+    const h = String(Math.floor(totalMinutos / 60)).padStart(2, "0");
+    const m = String(totalMinutos % 60).padStart(2, "0");
 
-                    🏨 ${hotel}
+    return `${h}:${m}`;
+}
 
-                    (${hoteis[hotel].length})
+function exportarPdf(id) {
+    const rota = rotasFinais.find(r => r.id === id);
 
-                </h3>
+    if (!rota) return;
 
-            `;
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
 
-            hoteis[hotel].forEach(p => {
+    let y = 15;
 
-                card.innerHTML += `
+    doc.setFontSize(16);
+    doc.text(`ROTA ${rota.id} - ENTRADA ${rota.horario}`, 10, y);
 
-                    <div class="passageiro">
+    y += 10;
 
-                        👤 ${p.nome}
+    doc.setFontSize(11);
+    doc.text(`Saída prevista: ${rota.saida}`, 10, y);
+    y += 7;
+    doc.text(`Carrinha: ${rota.carrinha}`, 10, y);
+    y += 7;
+    doc.text(`Capacidade: ${rota.capacidade}`, 10, y);
+    y += 7;
+    doc.text(`Total: ${rota.passageiros.length} passageiros`, 10, y);
 
-                        <br>
+    y += 12;
 
-                        📍 ${p.recolha}
+    doc.setFontSize(13);
+    doc.text("HOTÉIS", 10, y);
+    y += 8;
 
-                    </div>
+    const hoteis = agruparPor(rota.passageiros, "hotel");
 
-                `;
+    Object.keys(hoteis).sort().forEach(hotel => {
+        y = verificarPagina(doc, y);
 
-            });
+        doc.setFontSize(11);
+        doc.text(`${hotel} (${hoteis[hotel].length})`, 10, y);
+        y += 6;
 
-            conteudo.appendChild(card);
-
+        hoteis[hotel].forEach(p => {
+            y = verificarPagina(doc, y);
+            doc.setFontSize(10);
+            doc.text(`- ${p.nome} | ${p.recolha}`, 14, y);
+            y += 5;
         });
 
-    bloco.appendChild(conteudo);
+        y += 4;
+    });
 
-    rotasGeradas.appendChild(bloco);
+    y += 6;
+    y = verificarPagina(doc, y);
 
+    doc.setFontSize(13);
+    doc.text("PONTOS DE RECOLHA", 10, y);
+    y += 8;
+
+    const pontos = agruparPor(rota.passageiros, "recolha");
+
+    Object.keys(pontos).sort().forEach(ponto => {
+        y = verificarPagina(doc, y);
+
+        doc.setFontSize(11);
+        doc.text(`${ponto || "Sem ponto informado"} (${pontos[ponto].length})`, 10, y);
+        y += 6;
+
+        pontos[ponto].forEach(p => {
+            y = verificarPagina(doc, y);
+            doc.setFontSize(10);
+            doc.text(`- ${p.nome} | ${p.hotel}`, 14, y);
+            y += 5;
+        });
+
+        y += 4;
+    });
+
+    doc.save(`rota-${rota.id}-entrada-${rota.horario}.pdf`);
+}
+
+function verificarPagina(doc, y) {
+    if (y > 280) {
+        doc.addPage();
+        return 15;
+    }
+
+    return y;
 }
